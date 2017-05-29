@@ -1,0 +1,4 @@
+/data/**
+/rawData/**
+/.ipynb_checkpoints/**
+/**/.ipynb_checkpoints/**

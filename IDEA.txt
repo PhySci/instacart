@@ -1,0 +1,3 @@
+IDEA:
+
+create hot maps 'product - day of week', 'products - day of time'
