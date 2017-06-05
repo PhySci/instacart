@@ -4,6 +4,7 @@ from FPMC import FPMC
 from numpy import testing as npt
 import numpy as np
 import os
+import dill
 
 
 class TestFPMC(unittest.TestCase):
@@ -18,8 +19,12 @@ class TestFPMC(unittest.TestCase):
         obj = FPMC(300, 400)
         obj.save(testFileName)
 
-        obj2 = FPMC(500, 450)
+        #with open(testFileName, 'rb') as input:
+        #    obj2 = dill.load(input)
+
+        obj2 = FPMC(1,1)
         obj2.load(testFileName)
+
 
 
 
@@ -39,15 +44,10 @@ class TestFPMC(unittest.TestCase):
         users1 = np.random.randint(100,1000)
         items1 = np.random.randint(1000,10000)
         obj1 = FPMC(users1, items1)
-        print obj1.userNumber
-
 
         users2 = np.random.randint(100,1000)
         items2 = np.random.randint(1000,10000)
         obj2 = FPMC(users2, items2)
-
-        print obj1.userNumber
-        print obj2.userNumber
 
         # check properties value
         self.assertEqual(obj1.userNumber,users1)
