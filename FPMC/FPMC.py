@@ -16,10 +16,12 @@ class FPMC():
         :param items: number of items
         :param k: dimensionality of decomposition matrix
         """
+        # counter of iterations
+        self.iteration = 0
 
         # decomposition dimensionality
-        self._kui = 8
-        self._kil = 8
+        self._kui = k
+        self._kil = k
 
         # hyperparameters of SGD
         self._alpha = 0.1  # descend rate
@@ -33,8 +35,6 @@ class FPMC():
         # set object properties
         self.userNumber = users
         self.itemNumber = items
-        self._kui = k
-        self._kil = k
         self._sigma = float(sigma)
 
         # Fill out matrix
@@ -63,7 +63,7 @@ class FPMC():
         res = res + sm/len(basket)
         return res
 
-    def SGD(self,user,newBasket,oldBasket):
+    def SGD(self,user,newBasket,oldBasket, nSteps = 3):
         """
         Make one descendent step
         :param user: user_id
@@ -72,6 +72,7 @@ class FPMC():
         :return: none
         """
 
+        #for step in np.arange(nSteps+1):
         i = np.random.choice(newBasket)
         return self._descend(user, i, newBasket, oldBasket)
 
@@ -135,19 +136,23 @@ class FPMC():
 
 
 
-    def _descend(self, user, i, newBasket, oldBasket):
+    def _descend(self, user, i, newBasket, oldBasket, nSteps = 2):
         """
         One step of descend
-        :param user   - user id
-        :param i      - one item from new basket   
+        :param user       - user id
+        :param i          - one item from new basket   
         :param oldBasket  - previous order (array)
         :param newBasket  - new order
         """
+        self.iteration = self.iteration +1
+
         j = -1
         while (j==-1):
             guess = np.random.choice(self.itemNumber)
             if ~(newBasket == guess).sum():
                 j = guess
+
+        delta = -1
 
         try:
             delta = 1.0 - self._sigma*(self.getProbability(user,i,oldBasket)-self.getProbability(user,j,oldBasket))
@@ -188,7 +193,6 @@ class FPMC():
         except Exception as ins:
             print ins
             print 'User', user, ', item ', i
-            print locals()
 
         return delta
 

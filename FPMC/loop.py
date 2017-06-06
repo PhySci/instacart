@@ -3,8 +3,9 @@ import numpy as np
 from FPMC import FPMC as FM
 
 
-fName = 'tesModel3.pcl'
-maxUser = 100 # 206290 - full set
+fName = 'fullModel.pcl'
+userNumber = 206290 #- full set
+itemsNumber = 49688
 
 orders = pd.read_csv('../data/orders.csv',index_col = 'order_id',
                      usecols = ['order_id','user_id','eval_set','order_number','days_since_prior_order'])
@@ -17,24 +18,44 @@ items = pd.concat([pd.read_csv('../data/order_products__train.csv',usecols = use
 
 
 
-obj = FM(maxUser+1,49689)
+obj = FM(users=userNumber+1, items=itemsNumber+1, k=16)
+obj.setLearningRate(0.01)
+
+print 'load the model'
 obj.load(fName)
+
+print obj.iteration, ' has been done'
+
 print obj._alpha
 
 for ind in np.arange(1e6):
-    user = np.random.randint(1, maxUser+1)
+    user = np.random.randint(1, userNumber+1)
     user_orders = orders.query('user_id == @user')
-    order_number = np.random.randint(1, user_orders.shape[0]-2)
 
-    c = user_orders.iloc[order_number:(order_number + 2), :].index.values
-    g = items.query('order_id in @c').groupby('order_id')
+    nSteps = 5
+    for step in np.arange(nSteps):
+        delta = 0.0
 
-    basket = g.get_group(c[0]).product_id.values
-    prev_basket = g.get_group(c[1]).product_id.values
+        if user_orders.shape[0] <3:
+            break
 
-    delta = obj.SGD(user, basket, prev_basket)
-    print 'Step ', int(ind), ', user ', user, ', delta is', delta
+        order_number = np.random.randint(1, user_orders.shape[0]-2)
+
+        c = user_orders.iloc[order_number:(order_number + 2), :].index.values
+        g = items.query('order_id in @c').groupby('order_id')
+
+        basket = g.get_group(c[0]).product_id.values
+        prev_basket = g.get_group(c[1]).product_id.values
+
+        if len(prev_basket) == 0:
+            print 'Empty basket is found'
+            continue
+
+        delta += np.abs(obj.SGD(user, basket, prev_basket))
+
+    if (ind % 10 == 0):
+        print 'Step ', int(ind),'. User is',user, '. Delta is ',delta/nSteps
 
     if (ind % 1000 == 0):
+         print ' Save the model.'
          obj.save(fName)
-         print 'Save'
