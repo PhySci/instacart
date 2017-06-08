@@ -149,6 +149,10 @@ class FPMC():
         # probability for the current item i
         iProb = self.getProbability(user,i,oldBasket)
 
+        if ~np.isfinite(iProb):
+            print 'Non-finite probability for item', i,'. User ',user
+            return 0
+
         deltaMean = 0.0
         for step in np.arange(nSteps):
             j = -1
@@ -164,6 +168,8 @@ class FPMC():
 
                 if ~np.isfinite(delta):
                     print 'delta is not finite'
+                    print 'Item probability ',iProb
+                    print 'Random item probability ',self.getProbability(user,j,oldBasket)
                     return -1
 
                 #for f in np.arange(self._kui):

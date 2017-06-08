@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from FPMC import FPMC as FM
 
-fName = 'testModel-8June.pcl'
-userNumber = 100 #- full set
+fName = 'fullModel-8June.pcl'
+userNumber = 206290 # 100 #- full set
 itemsNumber = 49688
 
 orders = pd.read_csv('../data/orders.csv',index_col = 'order_id',
@@ -21,7 +21,7 @@ obj.setLearningRate(0.01)
 obj.setNormalization(0.01)
 
 print 'load the model'
-obj.load(fName)
+#obj.load(fName)
 
 print obj.iteration, ' has been done'
 
@@ -55,6 +55,6 @@ for ind in np.arange(1e6):
     if (ind % 10 == 0):
         print 'Step ', int(ind),'. User is',user, '. Delta is ',delta/nSteps
 
-    if (ind % 100 == 0):
+    if (ind % 1000 == 0):
          print ' Save the model.'
          obj.save(fName)
