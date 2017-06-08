@@ -9,7 +9,7 @@ import dill
 
 class FPMC():
 
-    def __init__(self, users=100, items=100, k=8, sigma=1.0):
+    def __init__(self, users=100, items=100, k=8, std=1.0):
         """
         Init instance of the class
         :param users: number of users
@@ -35,13 +35,13 @@ class FPMC():
         # set object properties
         self.userNumber = users
         self.itemNumber = items
-        self._sigma = float(sigma)
+        self._std = float(std)
 
         # Fill out matrix
-        self._VUI = np.random.normal(0,self._sigma,[self.userNumber,self._kui])
-        self._VIU = np.random.normal(0,self._sigma,[self.itemNumber,self._kui])
-        self._VIL = np.random.normal(0,self._sigma,[self.itemNumber,self._kui])
-        self._VLI = np.random.normal(0,self._sigma,[self.itemNumber,self._kui])
+        self._VUI = np.random.normal(0,self._std,[self.userNumber,self._kui])
+        self._VIU = np.random.normal(0,self._std,[self.itemNumber,self._kui])
+        self._VIL = np.random.normal(0,self._std,[self.itemNumber,self._kui])
+        self._VLI = np.random.normal(0,self._std,[self.itemNumber,self._kui])
 
 
     def getProbability(self,user,item,basket):
@@ -63,7 +63,7 @@ class FPMC():
         res = res + sm/len(basket)
         return res
 
-    def SGD(self,user,newBasket,oldBasket, nSteps = 3):
+    def SGD(self, user, newBasket, oldBasket, nSteps=1):
         """
         Make one descendent step
         :param user: user_id
@@ -74,10 +74,10 @@ class FPMC():
 
         #for step in np.arange(nSteps+1):
         i = np.random.choice(newBasket)
-        return self._descend(user, i, newBasket, oldBasket)
+        return self._descend(user, i, newBasket, oldBasket, nSteps)
 
 
-    def addOrder(self,user,newBasket,oldBasket,iterations = 1000):
+    def addOrder(self, user, newBasket, oldBasket, iterations = 1000):
         """
         Add all items from newBasket to FPMC model
         :param user: 
@@ -89,8 +89,7 @@ class FPMC():
 
         # loop over all items in newBasket
         for item in newBasket:
-            for iteration in np.arange(iterations):
-                self._descend(user, item, newBasket, oldBasket)
+            self._descend(user, item, newBasket, oldBasket, iterations)
 
 
     def save(self,fName):
@@ -136,63 +135,75 @@ class FPMC():
 
 
 
-    def _descend(self, user, i, newBasket, oldBasket, nSteps = 2):
+    def _descend(self, user, i, newBasket, oldBasket, nSteps = 1):
         """
         One step of descend
         :param user       - user id
         :param i          - one item from new basket   
         :param oldBasket  - previous order (array)
         :param newBasket  - new order
+        :param nSteps     - number of SGD steps
         """
         self.iteration = self.iteration +1
 
-        j = -1
-        while (j==-1):
-            guess = np.random.choice(self.itemNumber)
-            if ~(newBasket == guess).sum():
-                j = guess
+        # probability for the current item i
+        iProb = self.getProbability(user,i,oldBasket)
 
-        delta = -1
+        deltaMean = 0.0
+        for step in np.arange(nSteps):
+            j = -1
+            while (j==-1):
+                guess = np.random.choice(self.itemNumber)
+                if ~(newBasket == guess).sum():
+                    j = guess
 
-        try:
-            delta = 1.0 - self._sigma*(self.getProbability(user,i,oldBasket)-self.getProbability(user,j,oldBasket))
+            delta = -1
 
-            if ~np.isfinite(delta):
-                print 'delta is not finite'
-                return -1
+            try:
+                delta = 1.0 - self._sigma(iProb,self.getProbability(user,j,oldBasket))
 
-            for f in np.arange(self._kui):
-                self._VUI[user,f] = self._VUI[user,f] + self._alpha*\
-                     (delta*(self._VIU[i,f]-self._VIU[j,f])-self._lui*self._VUI[user,f])
+                if ~np.isfinite(delta):
+                    print 'delta is not finite'
+                    return -1
 
-                self._VIU[i,f] = self._VIU[i,f] + self._alpha*\
-                      (delta*self._VUI[user,f]-self._liu*self._VIU[i,f])
+                #for f in np.arange(self._kui):
+                self._VUI[user,:] = self._VUI[user,:] + self._alpha*\
+                     (delta*(self._VIU[i,:]-self._VIU[j,:])-self._lui*self._VUI[user,:])
 
-                self._VIU[j,f] = self._VIU[j,f] + self._alpha*\
-                      (-delta*self._VUI[user,f]-self._liu*self._VIU[j,f])
+                self._VIU[i,:] = self._VIU[i,:] + self._alpha*\
+                      (delta*self._VUI[user,:]-self._liu*self._VIU[i,:])
 
-            for f in np.arange(self._kil):
-                eta = np.sum(self._VLI[oldBasket, f]) / len(oldBasket)
+                self._VIU[j,:] = self._VIU[j,:] + self._alpha*\
+                      (-delta*self._VUI[user,:]-self._liu*self._VIU[j,:])
 
-                if ~np.isfinite(eta):
-                    print 'eta is not finite'
-                    break
+                for f in np.arange(self._kil):
+                    eta = np.sum(self._VLI[oldBasket, f]) / len(oldBasket)
 
-                self._VIL[i,f] = self._VIL[i,f] + self._alpha*(delta*eta-self._lil*self._VIL[i,f])
-                self._VIL[j,f] = self._VIL[j,f] + self._alpha*(-delta*eta-self._lil*self._VIL[j,f])
-
-                for l in oldBasket:
-                    k = self._alpha*(delta*(self._VIL[i,f]-self._VIL[j,f])/len(oldBasket)-self._lli*self._VLI[l,f])
-
-                    if ~np.isfinite(k):
-                        print 'k is not finite'
+                    if ~np.isfinite(eta):
+                        print 'eta is not finite'
                         break
 
-                    self._VLI[l,f] = self._VLI[l,f] + k
+                    self._VIL[i,f] = self._VIL[i,f] + self._alpha*(delta*eta-self._lil*self._VIL[i,f])
+                    self._VIL[j,f] = self._VIL[j,f] + self._alpha*(-delta*eta-self._lil*self._VIL[j,f])
 
-        except Exception as ins:
-            print ins
-            print 'User', user, ', item ', i
+                    for l in oldBasket:
+                        k = self._alpha*(delta*(self._VIL[i,f]-self._VIL[j,f])/len(oldBasket)-self._lli*self._VLI[l,f])
 
-        return delta
+                        if ~np.isfinite(k):
+                            print 'k is not finite'
+                            break
+
+                        self._VLI[l,f] = self._VLI[l,f] + k
+
+                deltaMean += delta
+
+            except Exception as ins:
+                print ins
+                print 'User', user, ', item ', i
+
+        return deltaMean/nSteps
+
+    @staticmethod
+    def _sigma(x1,x2):
+        return 1.0/(1+np.exp(-(x1-x2)))
 

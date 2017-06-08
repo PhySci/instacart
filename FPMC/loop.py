@@ -1,10 +1,9 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 from FPMC import FPMC as FM
 
-
-fName = 'fullModel.pcl'
-userNumber = 206290 #- full set
+fName = 'testModel-8June.pcl'
+userNumber = 100 #- full set
 itemsNumber = 49688
 
 orders = pd.read_csv('../data/orders.csv',index_col = 'order_id',
@@ -32,7 +31,7 @@ for ind in np.arange(1e6):
     user = np.random.randint(1, userNumber+1)
     user_orders = orders.query('user_id == @user')
 
-    nSteps = 5
+    nSteps = 2
     for step in np.arange(nSteps):
         delta = 0.0
 
@@ -51,11 +50,11 @@ for ind in np.arange(1e6):
             print 'Empty basket is found'
             continue
 
-        delta += np.abs(obj.SGD(user, basket, prev_basket))
+        delta += np.abs(obj.SGD(user, basket, prev_basket, 10))
 
     if (ind % 10 == 0):
         print 'Step ', int(ind),'. User is',user, '. Delta is ',delta/nSteps
 
-    if (ind % 1000 == 0):
+    if (ind % 100 == 0):
          print ' Save the model.'
          obj.save(fName)
