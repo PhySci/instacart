@@ -17,9 +17,9 @@ items = pd.concat([pd.read_csv('../data/order_products__train.csv',usecols = use
 
 
 
-
 obj = FM(users=userNumber+1, items=itemsNumber+1, k=16)
 obj.setLearningRate(0.01)
+obj.setNormalization(0.01)
 
 print 'load the model'
 obj.load(fName)
