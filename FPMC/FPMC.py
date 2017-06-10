@@ -191,15 +191,8 @@ class FPMC():
 
                     self._VIL[i,f] = self._VIL[i,f] + self._alpha*(delta*eta-self._lil*self._VIL[i,f])
                     self._VIL[j,f] = self._VIL[j,f] + self._alpha*(-delta*eta-self._lil*self._VIL[j,f])
-
-                    for l in oldBasket:
-                        k = self._alpha*(delta*(self._VIL[i,f]-self._VIL[j,f])/len(oldBasket)-self._lli*self._VLI[l,f])
-
-                        if ~np.isfinite(k):
-                            print 'k is not finite'
-                            break
-
-                        self._VLI[l,f] = self._VLI[l,f] + k
+                    self._VLI[oldBasket,f] = self._VLI[oldBasket,f] +\
+                        self._alpha*(delta*(self._VIL[i,f]-self._VIL[j,f])/len(oldBasket)-self._lli*self._VLI[oldBasket,f])
 
                 deltaMean += delta
 
