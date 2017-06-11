@@ -194,7 +194,7 @@ class FPMC():
                     self._VLI[oldBasket,f] = self._VLI[oldBasket,f] +\
                         self._alpha*(delta*(self._VIL[i,f]-self._VIL[j,f])/len(oldBasket)-self._lli*self._VLI[oldBasket,f])
 
-                deltaMean += delta
+                deltaMean = deltaMean+ delta
 
             except Exception as ins:
                 print ins
