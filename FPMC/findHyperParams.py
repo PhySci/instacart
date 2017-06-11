@@ -15,7 +15,7 @@ itemsGroup = pd.read_pickle('../data/items.pcl').groupby('order_id')
 #learningRateList = [0.1, 0.05, 0.01]
 #userNumberList = [100, 1000, 10000]
 
-aRateList = [1e-9, 1e-7, 1e-5, 1e-3, 0]
+aRateList = [1e-5, 1e-7, 1e-9, 0]
 userNumberList = [50000]
 
 cycles = 20
@@ -24,7 +24,7 @@ for a, u in itertools.product(aRateList,userNumberList):
     print "Learning rate ",a,"user ", u
 
     obj = FM(users=u+1, items=itemsNumber+1, k=8)
-    obj.setLearningRate(0.1, dynamic=True, dg=1e-7)
+    obj.setLearningRate(0.1, dynamic=True, dg=a)
     obj.setNormalization(0.1)
 
     logArr = np.empty((cycles*u,1), float)
