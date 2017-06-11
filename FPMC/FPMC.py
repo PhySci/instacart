@@ -35,6 +35,9 @@ class FPMC():
 
         # hyperparameters of SGD
         self._alpha = 0.1  # descend rate
+        self._alpha0 = 0.1
+        self._dynamic_rate = False
+        self._dg = 0
 
         # normalization coefficients
         self._lui = 0.1
@@ -87,7 +90,6 @@ class FPMC():
         i = np.random.choice(newBasket)
         return self._descend(user, i, newBasket, oldBasket, nSteps)
 
-
     def addOrder(self, user, newBasket, oldBasket, iterations = 1000):
         """
         Add all items from newBasket to FPMC model
@@ -102,7 +104,6 @@ class FPMC():
         for item in newBasket:
             self._descend(user, item, newBasket, oldBasket, iterations)
 
-
     def save(self,fName):
         """
         Save the object to a file
@@ -111,7 +112,6 @@ class FPMC():
         """
         with open(fName, 'wb') as output:
             dill.dump(self, output)
-
 
     def load(self,fName):
         """
@@ -138,14 +138,18 @@ class FPMC():
         self._liu = a
         self._lui = a
 
-    def setLearningRate(self,a):
+    def setLearningRate(self,a,dynamic = False, dg = 0):
         """
         Set learning rate
-        :param a: learning rate 
+        :param a: learning rate
+        :param dynamic: set adaptive learning rate
+        :param df: rate of decreasing of learning rate
         :return: 
         """
         self._alpha = a
-
+        self._alpha0 = a
+        self._dynamic_rate = dynamic
+        self._dg = dg
 
 
     def _descend(self, user, i, newBasket, oldBasket, nSteps = 1):
@@ -216,6 +220,9 @@ class FPMC():
 
             deltaMean += delta
 
+        if (self.iteration % 100 == 0 and self._dynamic_rate):
+            self._adjustLearningRate()
+
         return deltaMean/nSteps
 
     def _sigma(self,x1,x2):
@@ -238,4 +245,6 @@ class FPMC():
         finally:
             return res
 
+    def _adjustLearningRate(self):
+        self._alpha = self._alpha0/(1+self._alpha0*self._dg*self.iteration)
 
