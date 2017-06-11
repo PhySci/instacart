@@ -5,6 +5,7 @@ S. Rendle, C. Freudenthaler and L. Schmidt-Thieme
 
 import numpy as np
 import dill
+import logging
 
 
 class FPMC():
@@ -16,6 +17,15 @@ class FPMC():
         :param items: number of items
         :param k: dimensionality of decomposition matrix
         """
+
+        # set logging info
+        logging.basicConfig(filename='FPMC.log',format='%(asctime)s %(message)s')
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+
+        # set numpy properties
+        np.seterr(over='raise')
+
         # counter of iterations
         self.iteration = 0
 
@@ -42,6 +52,7 @@ class FPMC():
         self._VIU = np.random.normal(0,self._std,[self.itemNumber,self._kui])
         self._VIL = np.random.normal(0,self._std,[self.itemNumber,self._kui])
         self._VLI = np.random.normal(0,self._std,[self.itemNumber,self._kui])
+        self.logger.info('The instance was created.')
 
 
     def getProbability(self,user,item,basket):
@@ -112,6 +123,8 @@ class FPMC():
 
         for key in self.__dict__.keys():
             setattr(self,key,getattr(obj,key))
+        # @TODO add exception if the file is absent.
+
 
 
     def setNormalization(self,a):
@@ -151,10 +164,12 @@ class FPMC():
 
         if ~np.isfinite(iProb):
             print 'Non-finite probability for item', i,'. User ',user
+            self.logger.warning('Non-finite probability. User %d, item %d', user, i)
             return 0
 
         deltaMean = 0.0
         for step in np.arange(nSteps):
+
             j = -1
             while (j==-1):
                 guess = np.random.choice(self.itemNumber)
@@ -163,46 +178,64 @@ class FPMC():
 
             delta = -1
 
-            try:
-                delta = 1.0 - self._sigma(iProb,self.getProbability(user,j,oldBasket))
+            jProb = self.getProbability(user,j,oldBasket)
+            delta = 1.0 - self._sigma(iProb,jProb)
 
-                if ~np.isfinite(delta):
-                    print 'delta is not finite'
-                    print 'Item probability ',iProb
-                    print 'Random item probability ',self.getProbability(user,j,oldBasket)
-                    return -1
+            if ~np.isfinite(delta):
+                print 'delta is not finite'
+                print 'Item probability ',iProb
+                print 'Random item probability ',jProb
+                self.logger.warning('Delta value is not finite. User %d, item %d, item probability %f, item random probability %f',
+                                    user, i, iProb, jProb)
+                return -1
 
-                #for f in np.arange(self._kui):
-                self._VUI[user,:] = self._VUI[user,:] + self._alpha*\
-                     (delta*(self._VIU[i,:]-self._VIU[j,:])-self._lui*self._VUI[user,:])
+            #for f in np.arange(self._kui):
+            self._VUI[user,:] = self._VUI[user,:] + self._alpha*\
+                 (delta*(self._VIU[i,:]-self._VIU[j,:])-self._lui*self._VUI[user,:])
 
-                self._VIU[i,:] = self._VIU[i,:] + self._alpha*\
-                      (delta*self._VUI[user,:]-self._liu*self._VIU[i,:])
+            self._VIU[i,:] = self._VIU[i,:] + self._alpha*\
+                  (delta*self._VUI[user,:]-self._liu*self._VIU[i,:])
 
-                self._VIU[j,:] = self._VIU[j,:] + self._alpha*\
-                      (-delta*self._VUI[user,:]-self._liu*self._VIU[j,:])
+            self._VIU[j,:] = self._VIU[j,:] + self._alpha*\
+                  (-delta*self._VUI[user,:]-self._liu*self._VIU[j,:])
 
-                for f in np.arange(self._kil):
-                    eta = np.sum(self._VLI[oldBasket, f]) / len(oldBasket)
+            for f in np.arange(self._kil):
+                eta = np.sum(self._VLI[oldBasket, f]) / len(oldBasket)
 
-                    if ~np.isfinite(eta):
-                        print 'eta is not finite'
-                        break
+                if ~np.isfinite(eta):
+                    print 'eta is not finite'
+                    self.logger.warning(
+                        'Eta value is not finite. User %d, item %d, item probability is %f, item random probability is %f, delts is %f',
+                        user, i, iProb, iProb, delta)
+                    break
 
-                    self._VIL[i,f] = self._VIL[i,f] + self._alpha*(delta*eta-self._lil*self._VIL[i,f])
-                    self._VIL[j,f] = self._VIL[j,f] + self._alpha*(-delta*eta-self._lil*self._VIL[j,f])
-                    self._VLI[oldBasket,f] = self._VLI[oldBasket,f] +\
-                        self._alpha*(delta*(self._VIL[i,f]-self._VIL[j,f])/len(oldBasket)-self._lli*self._VLI[oldBasket,f])
+                self._VIL[i,f] = self._VIL[i,f] + self._alpha*(delta*eta-self._lil*self._VIL[i,f])
+                self._VIL[j,f] = self._VIL[j,f] + self._alpha*(-delta*eta-self._lil*self._VIL[j,f])
+                self._VLI[oldBasket,f] = self._VLI[oldBasket,f] +\
+                    self._alpha*(delta*(self._VIL[i,f]-self._VIL[j,f])/len(oldBasket)-self._lli*self._VLI[oldBasket,f])
 
-                deltaMean += delta
-
-            except Exception as ins:
-                print ins
-                print 'User', user, ', item ', i
+            deltaMean += delta
 
         return deltaMean/nSteps
 
-    @staticmethod
-    def _sigma(x1,x2):
-        return 1.0/(1+np.exp(-(x1-x2)))
+    def _sigma(self,x1,x2):
+        """
+        Calculate value of sigmoid function of difference x1 and x2 
+        :param x1: probability of first item
+        :param x2: probability of second item
+        :return: 
+        """
+        try:
+            dx = x1-x2
+            res =  1.0/(1+np.exp(-dx))
+        except Exception as ins:
+            print ins
+            if dx <0:
+                res = 0
+            else:
+                res = 1
+            self.logger.warning('Sigma calculation error. dx is %f', dx)
+        finally:
+            return res
+
 

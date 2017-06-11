@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 from FPMC import FPMC as FM
 
-fName = 'fullModel-9June.pcl'
-logFile = 'fullModel-9June.csv'
+fName = 'testModel-10June7.pcl'
+logFile = 'testModel-10June7.csv'
 
-userNumber = 206290 # 100 #- full set
+userNumber =  1000# 100 # 206290 - full set
 itemsNumber = 49688
 
 orders = pd.read_csv('../data/orders.csv',index_col = 'order_id',
@@ -15,20 +15,21 @@ usecols = ['order_id','product_id']
 items = pd.concat([pd.read_csv('../data/order_products__train.csv',usecols = usecols),
                    pd.read_csv('../data/order_products__prior.csv',usecols = usecols)])
 
-obj = FM(users=userNumber+1, items=itemsNumber+1, k=128)
-obj.setLearningRate(0.01)
+obj = FM(users=userNumber+1, items=itemsNumber+1, k=8)
+obj.setLearningRate(0.2)
 obj.setNormalization(0.1)
 
 print 'load the model'
-obj.load(fName)
+#obj.load(fName)
 
 print obj.iteration, ' has been done'
 
 steps2save = 1000
 logArr = np.empty((0,2), int)
 
-for ind in np.arange(1e6):
-    user = np.random.randint(1, userNumber+1)
+for ind in np.arange(5e3):
+    user =  np.random.randint(1, userNumber+1)
+
     user_orders = orders.query('user_id == @user')
 
     nSteps = 5
