@@ -220,7 +220,7 @@ class FPMC():
 
             deltaMean += delta
 
-        if (self.iteration % 100 == 0 and self._dynamic_rate):
+        if (self.iteration % 10 == 0 and self._dynamic_rate):
             self._adjustLearningRate()
 
         return deltaMean/nSteps
