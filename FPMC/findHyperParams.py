@@ -15,7 +15,7 @@ itemsGroup = pd.read_pickle('../data/items.pcl').groupby('order_id')
 #learningRateList = [0.1, 0.05, 0.01]
 #userNumberList = [100, 1000, 10000]
 
-aRateList = [1e-5, 1e-7, 1e-9, 0]
+aRateList = [1e-7, 1e-9, 0]
 userNumberList = [50000]
 
 cycles = 20

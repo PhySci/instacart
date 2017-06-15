@@ -10,7 +10,7 @@ import logging
 
 class FPMC():
 
-    def __init__(self, users=100, items=100, k=8, std=1.0):
+    def __init__(self, users=100, items=100, ku=8, ki = 8, std=1.0):
         """
         Init instance of the class
         :param users: number of users
@@ -30,8 +30,8 @@ class FPMC():
         self.iteration = 0
 
         # decomposition dimensionality
-        self._kui = k
-        self._kil = k
+        self._kui = ku
+        self._kil = ki
 
         # hyperparameters of SGD
         self._alpha = 0.1  # descend rate
@@ -53,8 +53,8 @@ class FPMC():
         # Fill out matrix
         self._VUI = np.random.normal(0,self._std,[self.userNumber,self._kui])
         self._VIU = np.random.normal(0,self._std,[self.itemNumber,self._kui])
-        self._VIL = np.random.normal(0,self._std,[self.itemNumber,self._kui])
-        self._VLI = np.random.normal(0,self._std,[self.itemNumber,self._kui])
+        self._VIL = np.random.normal(0,self._std,[self.itemNumber,self._kil])
+        self._VLI = np.random.normal(0,self._std,[self.itemNumber,self._kil])
         self.logger.info('The instance was created.')
 
 
@@ -118,14 +118,14 @@ class FPMC():
         Load object from file
         :return: 
         """
-        with open(fName, 'rb') as input:
-            obj = dill.load(input)
-
-        for key in self.__dict__.keys():
-            setattr(self,key,getattr(obj,key))
-        # @TODO add exception if the file is absent.
-
-
+        try:
+            with open(fName, 'rb') as input:
+                obj = dill.load(input)
+        except IOError:
+            print 'File is absent.'
+        else:
+            for key in self.__dict__.keys():
+                setattr(self,key,getattr(obj,key))
 
     def setNormalization(self,a):
         """

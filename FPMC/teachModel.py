@@ -3,10 +3,10 @@ import pandas as pd
 from FPMC import FPMC as FM
 from time import time
 
-fName = 'fullModel-12June.pcl'
-logFile = 'fullModel-12June.csv'
+fName = 'fullModel-13June-3.pcl'
+logFile = 'fullModel-13June-3.csv'
 
-userNumber =  206290 #- full set
+userNumber =  206209 #- full set
 itemsNumber = 49688
 
 ordersGroup = pd.read_pickle('../data/orders.pcl').groupby('user_id')
@@ -14,27 +14,24 @@ itemsGroup  = pd.read_pickle('../data/items.pcl').groupby('order_id')
 
 
 
-obj = FM(users=userNumber+1, items=itemsNumber+1, k= 128)
-obj.setLearningRate(0.05, dynamic=True, dg= 1e-8)
-obj.setNormalization(0.2)
-
-#obj.load(fName)
+obj = FM(users=userNumber+1, items=itemsNumber+1, ku = 512, ki = 128)
+obj.load(fName)
+obj.setLearningRate(0.1, dynamic = True, dg = 1e-3)
+obj.iteration = 1
+obj.setNormalization(0.1)
 
 print obj.iteration, ' has been done'
 
-steps2save = 1000
+steps2save = 100000
+steps2show = 1000
 logArr = np.empty((0,2), int)
 
-for ind in np.arange(1,10*userNumber):
-    user = int(ind % obj.userNumber)
-
-    if user ==0:
-        continue
+for ind in np.arange(1,500*userNumber):
+    user = np.random.randint(1,obj.userNumber)
 
     user_orders = ordersGroup.get_group(user)
     if user_orders.shape[0] < 3:
         break
-
 
     delta = 0.0
 
@@ -47,16 +44,17 @@ for ind in np.arange(1,10*userNumber):
         print 'Empty basket is found'
         continue
 
-    delta = np.abs(obj.SGD(user, basket, prev_basket, 10))
+    delta = np.abs(obj.SGD(user, basket, prev_basket, 1))
     logArr = np.vstack([logArr, np.array([obj.iteration, delta])])
 
 
-    if (ind % steps2save == 0):
-         print ' Save the model. Step is ', ind
-         #obj.save(fName)
-
+    if (ind % steps2show == 0):
+         print 'Step is {:d}, rate is {:1.5f}'.format(ind, obj._alpha)
          with open(logFile, 'a') as f_handle:
              np.savetxt(f_handle, logArr, delimiter=',')
              logArr = np.empty((0, 2), int)
 
+    if (ind % steps2save == 0):
+         print ' Save the model. Step is ', ind
+         obj.save(fName)
 

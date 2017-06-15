@@ -4,10 +4,9 @@ import numpy as np
 from FPMC import FPMC
 from sklearn.metrics import roc_curve
 
-
 def main(fName, uSamples = 10, seed = 43):
     """
-    Main fucntion to test propeties of the prediction model
+    Main fucntion to test properties of the prediction model
     :param fName:    name of file with the model
     :param uSamples: number of users for testing
     :param seed:     seed of random generator
@@ -23,50 +22,61 @@ def main(fName, uSamples = 10, seed = 43):
     # load data
     print 'Load data'
     products = pd.read_csv('../data/products.csv', index_col='product_id')
-    orders = pd.read_csv('../data/orders.csv', index_col='order_id',
-                         usecols=['order_id', 'user_id', 'eval_set', 'order_number', 'days_since_prior_order'])
-    usecols = ['order_id', 'product_id']
-    items = pd.concat([pd.read_csv('../data/order_products__train.csv', usecols=usecols),
-                       pd.read_csv('../data/order_products__prior.csv', usecols=usecols)])
+    ordersGroup = pd.read_pickle('../data/orders.pcl').groupby('user_id')
+    items = pd.read_pickle('../data/items.pcl')
 
-    print 'Test the model'
+    print 'Test the model \n'
+
+    mean_f1_total = 0.0
+    fpmc_f1_total = 0.0
 
     for tUser in testUsers:
-        tOrders = orders.query('user_id == @tUser')
-        testOrder = tOrders.query("eval_set != 'prior'")
+        print '\nUser {:d}'.format(tUser)
+        userOrders = ordersGroup.get_group(tUser)
+        testOrder = userOrders.query("eval_set != 'prior'")
+        trainOrders = userOrders.query("eval_set == 'prior'")
+        trainOrderIds = trainOrders.index.values
 
         if testOrder.eval_set.values == 'test':
-            print 'Test user'
             continue
         else:
             testOrderId = testOrder.index.values
 
-        # train the model
-        prevOrderId = tOrders.query('order_number == 1').index.values
+        prevOrderNumber = testOrder.order_number.values - 1
+        prevOrderId = userOrders.query('order_number == @prevOrderNumber').index.values
         prevBasket = items.query('order_id == @prevOrderId').product_id.values
-
-        #for newOrderId in tOrders.index.values[1:-1]:
-        #    # print 'Order id is', newOrderId
-        #    newBasket = items.query('order_id == @newOrderId').product_id.values
-        #    FM.addOrder(tUser, newBasket, prevBasket, iterations=1e4)
-        #    prevBasket = newBasket
-
         testBasket = items.query('order_id == @testOrderId').product_id.values
 
-        ordIds = tOrders.index.values[:-1]
-        fullBasket = items.query('order_id in @ordIds').drop_duplicates('product_id')
-        fullBasket = fullBasket.merge(products, left_on='product_id', right_index=True).drop(
-            ['aisle_id', 'department_id'],
-            axis=1)
+        ordIds = userOrders.index.values[:-1]
+
+        userItems = items.query('order_id in @trainOrderIds')
+
+        # find full basket
+        fullBasket = userItems.groupby('product_id').count()
+        fullBasket.rename(columns={'order_id': 'quantity'}, inplace=True)
+        #fullBasket = fullBasket.merge(products, left_index=True, right_index=True).drop(['aisle_id', 'department_id'],
+        #                                                                                axis=1)
+
+        # calculate mean size of basket
+        size = np.round(userItems.groupby('order_id').count().mean()).values
 
         for k, v in fullBasket.iterrows():
-            fullBasket.loc[k, 'prob'] = FM.getProbability(basket=prevBasket, item=v.product_id, user=tUser)
-            fullBasket.loc[k, 'wasOrdered'] = v.product_id in testBasket
+            fullBasket.loc[k, 'prob'] = FM.getProbability(basket=prevBasket, item=k, user=tUser)
+            #fullBasket.loc[k, 'wasOrdered'] = k in testBasket
 
-        fullBasket.sort_values('wasOrdered', ascending=True, inplace=True)
-        print roc_curve(fullBasket.wasOrdered, fullBasket.prob)
+        # FPMC model
+        recommendation = fullBasket.sort_values('prob', ascending=False).index.values[:int(size)]
+        [pr, recall, fpmc_f1] = f1Score(testBasket, recommendation)
+        fpmc_f1_total += fpmc_f1
 
-    return
+        # Most popular model'
+        recommendation = fullBasket.sort_values('quantity', ascending=False).index.values[:int(size)]
+        [pr, recall, mean_f1] = f1Score(testBasket, recommendation)
+        mean_f1_total += mean_f1
+
+    print 'FPMC score {:f}'.format(fpmc_f1_total)
+    print 'Mean score {:f}'.format(mean_f1_total)
+
 
 def f1Score(y_true,y_pred):
     """
@@ -91,6 +101,6 @@ def f1Score(y_true,y_pred):
 
 
 if __name__ == '__main__':
-    fName = 'testModel-8June.pcl'
-    main(fName)
+    fName = 'fullModel-13June-3.pcl'
+    main(fName,1000)
 
