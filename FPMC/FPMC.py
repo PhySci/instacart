@@ -121,8 +121,9 @@ class FPMC():
         try:
             with open(fName, 'rb') as input:
                 obj = dill.load(input)
-        except IOError:
+        except EOFError as ins:
             print 'File is absent.'
+            print ins
         else:
             for key in self.__dict__.keys():
                 setattr(self,key,getattr(obj,key))

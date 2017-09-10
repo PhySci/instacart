@@ -14,6 +14,8 @@ def main(fName, uSamples = 10, seed = 43):
     """
     FM = FPMC()
     FM.load(fName)
+    print FM.userNumber
+    print FM.itemNumber
 
     # create ramdom list of test users
     rnd = np.random.RandomState(seed)
@@ -101,6 +103,6 @@ def f1Score(y_true,y_pred):
 
 
 if __name__ == '__main__':
-    fName = 'fullModel-13June-3.pcl'
+    fName = 'fullModel-16June-3.pcl'
     main(fName,1000)
 
